@@ -53,7 +53,7 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
                   width: double.infinity,
                   height: 200,
                   fit: BoxFit.cover,
-                  errorBuilder: (_, __, ___) => const SizedBox(),
+                  errorBuilder: (_, _, _) => const SizedBox(),
                 ),
               ),
             const SizedBox(height: 12),
@@ -62,7 +62,7 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
             Chip(
               avatar: Icon(category.icon, size: 18, color: category.color),
               label: Text(category.name),
-              backgroundColor: category.color.withOpacity(0.15),
+              backgroundColor: category.color.withValues(alpha: 0.15),
               side: BorderSide.none,
             ),
             const SizedBox(height: 8),

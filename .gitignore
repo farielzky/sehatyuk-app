@@ -80,6 +80,6 @@ app.*.map.json
 # API key 
 .env
 .env.*
-lib/utils/secrets.dart
+!.env.example
 
 # pubspec.lock SENGAJA di-commit supaya versi package sama di semua anggota tim

@@ -129,7 +129,7 @@ class _HomeScreenState extends State<HomeScreen> {
           if (lastRead != null)
             Card(
               margin: const EdgeInsets.fromLTRB(16, 8, 16, 4),
-              color: primaryColor.withOpacity(0.1),
+              color: primaryColor.withValues(alpha: 0.1),
               child: ListTile(
                 leading: const Icon(Icons.history, color: primaryColor),
                 title: const Text('Terakhir dibaca', style: TextStyle(fontSize: 12)),

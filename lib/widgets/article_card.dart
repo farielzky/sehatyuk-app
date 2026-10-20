@@ -18,7 +18,7 @@ class ArticleCard extends StatelessWidget {
       child: ListTile(
         onTap: onTap,
         leading: CircleAvatar(
-          backgroundColor: category.color.withOpacity(0.15),
+          backgroundColor: category.color.withValues(alpha: 0.15),
           child: Icon(category.icon, color: category.color),
         ),
         title: Text(
