@@ -23,16 +23,32 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
+  bool _isValidEmail(String email) {
+    return RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(email);
+  }
+
   Future<void> _login() async {
     final email = _emailController.text.trim();
     final password = _passwordController.text;
 
-    // Login sederhana (tanpa server): email wajib diisi, password minimal 6 karakter
-    if (email.isEmpty || password.length < 6) {
-      setState(
-          () => _error = 'Email wajib diisi, password minimal 6 karakter');
+    // Login sederhana (tanpa server): email wajib diisi dan berformat benar
+    // password minimal 6 karakter
+    if (email.isEmpty) {
+      setState(() => _error = 'Email wajib diisi');
       return;
     }
+
+    if (!_isValidEmail(email)) {
+      setState(() => _error = "Format Email tidak valid");
+      return;
+    }
+
+    if (password.length < 6) {
+      setState(() => _error = "Kata sandi minimal 6 karakter");
+      return;
+    }
+    // Menghapus pesan error jika input sudah benar
+    setState(() => _error = '');
 
     await context.read<AuthProvider>().login(email);
     if (!mounted) return;
@@ -262,7 +278,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         'Lupa kata sandi?',
                         style: TextStyle(
                           fontSize: 13,
-                          color: primaryColor,
+                          color: Color(0xFFBDBDBD),
                           fontWeight: FontWeight.w500,
                         ),
                       ),
@@ -346,7 +362,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           'Daftar',
                           style: TextStyle(
                             fontSize: 14,
-                            color: primaryColor,
+                            color: Color(0xFFBDBDBD),
                             fontWeight: FontWeight.w700,
                           ),
                         ),
