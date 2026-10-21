@@ -6,6 +6,7 @@ import 'providers/bookmark_provider.dart';
 import 'screens/bookmark_screen.dart';
 import 'screens/home_screen.dart';
 import 'screens/login_screen.dart';
+import 'screens/splash_screen.dart';
 import 'utils/constants.dart';
 
 Future<void> main() async {
@@ -34,8 +35,6 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isLoggedIn = context.read<AuthProvider>().isLoggedIn;
-
     return MaterialApp(
       title: 'SEHATYUK',
       debugShowCheckedModeBanner: false,
@@ -43,9 +42,10 @@ class MyApp extends StatelessWidget {
         colorScheme: ColorScheme.fromSeed(seedColor: primaryColor),
         useMaterial3: true,
       ),
-      // Kalau sudah login, langsung ke Home
-      initialRoute: isLoggedIn ? '/home' : '/login',
+      // Splash Screen selalu tampil pertama saat aplikasi dibuka
+      initialRoute: '/',
       routes: {
+        '/': (context) => const SplashScreen(),
         '/login': (context) => const LoginScreen(),
         '/home': (context) => const HomeScreen(),
         '/bookmarks': (context) => const BookmarkScreen(),
