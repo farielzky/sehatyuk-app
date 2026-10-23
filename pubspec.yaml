@@ -67,7 +67,6 @@ flutter:
     - .env
     - assets/logo.svg
     - assets/logo_light.svg
-    - assets/icon.jpg
   
   fonts:
        - family: Poppins
