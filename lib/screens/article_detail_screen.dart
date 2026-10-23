@@ -38,243 +38,242 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
     }
   }
 
+  // NewsAPI menambahkan potongan seperti "[+1234 chars]" di akhir isi
+  String _cleanContent(String text) {
+    return text.replaceAll(RegExp(r'\s*\[\+\d+ chars\]\s*$'), '').trim();
+  }
+
   @override
   Widget build(BuildContext context) {
     final article = widget.article;
     final category = findCategory(article.category);
-    final isBookmarked = context.watch<BookmarkProvider>().isBookmarked(article);
-    final screenWidth = MediaQuery.of(context).size.width;
+    final isBookmarked =
+        context.watch<BookmarkProvider>().isBookmarked(article);
 
-    // Responsive breakpoints
-    final isWide = screenWidth >= 600;
-    // Batasi tinggi gambar agar proporsional, dengan batas maks di layar lebar
-    final imageHeight = isWide
-        ? (screenWidth * 0.4).clamp(200.0, 400.0)
-        : screenWidth * 0.65;
-    final contentPad = isWide ? 32.0 : 20.0;
-    final contentMaxWidth = 720.0;
+    final rawContent =
+        article.content.isNotEmpty ? article.content : article.description;
+    final isTruncated = RegExp(r'\[\+\d+ chars\]').hasMatch(rawContent);
+    final body = _cleanContent(rawContent);
 
     return Scaffold(
-      // ─── AppBar transparan di atas gambar ───
-      extendBodyBehindAppBar: article.imageUrl.isNotEmpty,
-      appBar: AppBar(
-        title: const Text('Detail Artikel'),
-        backgroundColor:
-            article.imageUrl.isNotEmpty ? Colors.transparent : null,
-        elevation: article.imageUrl.isNotEmpty ? 0 : null,
-        foregroundColor: article.imageUrl.isNotEmpty ? Colors.white : null,
-        actions: [
-          IconButton(
-            icon: Icon(isBookmarked ? Icons.bookmark : Icons.bookmark_border),
-            onPressed: () =>
-                context.read<BookmarkProvider>().toggleBookmark(article),
-          ),
-        ],
-      ),
-      body: SingleChildScrollView(
+      backgroundColor: appBackgroundColor,
+      body: SafeArea(
+        bottom: false,
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // ─── Hero Image dengan gradient overlay ───
-            if (article.imageUrl.isNotEmpty)
-              Stack(
-                children: [
-                  Image.network(
-                    article.imageUrl,
-                    width: double.infinity,
-                    height: imageHeight,
-                    fit: BoxFit.cover,
-                    errorBuilder: (_, _, _) => Container(
-                      width: double.infinity,
-                      height: imageHeight,
-                      color: category.color.withValues(alpha: 0.15),
-                      child: Center(
-                        child: Icon(
-                          category.icon,
-                          size: isWide ? 80 : 64,
-                          color: category.color.withValues(alpha: 0.4),
-                        ),
-                      ),
-                    ),
-                  ),
-                  // Gradient overlay dari atas (untuk AppBar) dan bawah
-                  Positioned.fill(
-                    child: DecoratedBox(
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          begin: Alignment.topCenter,
-                          end: Alignment.bottomCenter,
-                          colors: [
-                            Colors.black.withValues(alpha: 0.5),
-                            Colors.transparent,
-                            Colors.transparent,
-                            Colors.black.withValues(alpha: 0.3),
-                          ],
-                          stops: const [0.0, 0.25, 0.7, 1.0],
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-
-            // ─── Konten artikel (di-center di layar lebar) ───
-            Center(
-              child: ConstrainedBox(
-                constraints: BoxConstraints(maxWidth: contentMaxWidth),
-                child: Padding(
-                  padding: EdgeInsets.all(contentPad),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Label kategori bergaya
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 14, vertical: 7),
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            colors: [
-                              category.color,
-                              category.color.withValues(alpha: 0.8),
-                            ],
-                          ),
-                          borderRadius: BorderRadius.circular(24),
-                          boxShadow: [
-                            BoxShadow(
-                              color: category.color.withValues(alpha: 0.3),
-                              blurRadius: 10,
-                              offset: const Offset(0, 3),
+            Expanded(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.fromLTRB(24, 8, 24, 16),
+                child: Center(
+                  // Di layar lebar, isi dibatasi 720 px dan berada di tengah
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 720),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        // --- Baris atas: kembali dan bookmark ---
+                        Row(
+                          children: [
+                            _CircleIconButton(
+                              icon: Icons.arrow_back,
+                              color: textPrimaryColor,
+                              onTap: () => Navigator.pop(context),
+                            ),
+                            const Spacer(),
+                            _CircleIconButton(
+                              icon: isBookmarked
+                                  ? Icons.bookmark
+                                  : Icons.bookmark_border,
+                              color: isBookmarked
+                                  ? primaryColor
+                                  : textPrimaryColor,
+                              onTap: () => context
+                                  .read<BookmarkProvider>()
+                                  .toggleBookmark(article),
                             ),
                           ],
                         ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
+                        const SizedBox(height: 16),
+
+                        // --- Gambar utama ---
+                        _Hero(article: article, category: category),
+                        const SizedBox(height: 16),
+
+                        // --- Label kategori ---
+                        Row(
                           children: [
-                            Icon(category.icon,
-                                size: 16, color: Colors.white),
-                            const SizedBox(width: 6),
-                            Text(
-                              category.name,
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 13,
-                                fontWeight: FontWeight.w600,
-                                letterSpacing: 0.3,
+                            Container(
+                              width: 24,
+                              height: 24,
+                              decoration: BoxDecoration(
+                                color: category.lightColor,
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Icon(
+                                category.icon,
+                                size: 14,
+                                color: category.color,
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Flexible(
+                              child: Text(
+                                category.name.toUpperCase(),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w600,
+                                  letterSpacing: 0.88,
+                                  height: 16 / 11,
+                                  color: category.darkColor,
+                                ),
                               ),
                             ),
                           ],
                         ),
-                      ),
-                      const SizedBox(height: 16),
+                        const SizedBox(height: 16),
 
-                      // Judul artikel
-                      Text(
-                        article.title,
-                        style: TextStyle(
-                          fontSize: isWide ? 26 : 22,
-                          fontWeight: FontWeight.bold,
-                          height: 1.3,
-                          letterSpacing: -0.3,
+                        // --- Judul ---
+                        Text(
+                          article.title,
+                          style: const TextStyle(
+                            fontSize: 22,
+                            fontWeight: FontWeight.w600,
+                            height: 30 / 22,
+                            color: textPrimaryColor,
+                          ),
                         ),
-                      ),
-                      const SizedBox(height: 12),
+                        const SizedBox(height: 16),
 
-                      // Info sumber & tanggal
-                      Container(
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: Colors.grey.shade100,
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Row(
+                        // --- Sumber dan tanggal ---
+                        Row(
                           children: [
-                            Icon(Icons.newspaper_rounded,
-                                size: 18, color: category.color),
+                            Container(
+                              width: 28,
+                              height: 28,
+                              decoration: const BoxDecoration(
+                                color: primaryLightColor,
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(
+                                Icons.person_outline,
+                                size: 16,
+                                color: primaryColor,
+                              ),
+                            ),
                             const SizedBox(width: 8),
-                            Expanded(
+                            Flexible(
                               child: Text(
                                 article.source,
-                                style: TextStyle(
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w500,
-                                  color: Colors.grey.shade700,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  height: 18 / 12,
+                                  color: textSecondaryColor,
                                 ),
                               ),
                             ),
                             if (article.date.isNotEmpty) ...[
-                              Container(
-                                width: 1,
-                                height: 16,
-                                color: Colors.grey.shade300,
+                              const SizedBox(width: 8),
+                              const Icon(
+                                Icons.schedule,
+                                size: 14,
+                                color: textSecondaryColor,
                               ),
                               const SizedBox(width: 8),
-                              Icon(Icons.calendar_today_rounded,
-                                  size: 14, color: Colors.grey.shade500),
-                              const SizedBox(width: 4),
                               Text(
                                 article.date,
-                                style: TextStyle(
+                                style: const TextStyle(
                                   fontSize: 12,
-                                  color: Colors.grey.shade500,
+                                  height: 18 / 12,
+                                  color: textSecondaryColor,
                                 ),
                               ),
                             ],
                           ],
                         ),
-                      ),
-                      const SizedBox(height: 20),
+                        const SizedBox(height: 16),
 
-                      // Konten/deskripsi artikel
-                      Text(
-                        article.content.isNotEmpty
-                            ? article.content
-                            : article.description,
-                        style: TextStyle(
-                          fontSize: isWide ? 16 : 15,
-                          height: 1.7,
-                          color: Colors.grey.shade800,
+                        // --- Garis denyut pemisah ---
+                        SizedBox(
+                          height: 16,
+                          width: double.infinity,
+                          child: CustomPaint(painter: _PulseDividerPainter()),
                         ),
-                      ),
-                      const SizedBox(height: 28),
+                        const SizedBox(height: 16),
 
-                      // ─── Tombol "Baca Selengkapnya" ───
-                      if (article.url.isNotEmpty)
-                        Center(
-                          child: ConstrainedBox(
-                            constraints:
-                                const BoxConstraints(maxWidth: 400),
-                            child: SizedBox(
-                              width: double.infinity,
-                              height: 52,
-                              child: ElevatedButton.icon(
-                                onPressed: _openInBrowser,
-                                icon: const Icon(
-                                    Icons.open_in_new_rounded,
-                                    size: 20),
-                                label: const Text(
-                                  'Baca Selengkapnya',
-                                  style: TextStyle(
-                                    fontSize: 15,
-                                    fontWeight: FontWeight.w600,
-                                    letterSpacing: 0.3,
-                                  ),
-                                ),
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: category.color,
-                                  foregroundColor: Colors.white,
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(14),
-                                  ),
-                                  elevation: 2,
-                                  shadowColor:
-                                      category.color.withValues(alpha: 0.4),
-                                ),
-                              ),
-                            ),
+                        // --- Isi artikel ---
+                        Text(
+                          body,
+                          style: const TextStyle(
+                            fontSize: 14,
+                            height: 22 / 14,
+                            color: textPrimaryColor,
                           ),
                         ),
-                      const SizedBox(height: 16),
-                    ],
+                        if (isTruncated) ...[
+                          const SizedBox(height: 12),
+                          const Text(
+                            'Isi artikel dipotong oleh sumbernya. '
+                            'Tekan "Baca selengkapnya" untuk membaca versi penuh.',
+                            style: TextStyle(
+                              fontSize: 12,
+                              height: 18 / 12,
+                              color: textSecondaryColor,
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+
+            // --- Bilah tombol di bawah ---
+            Container(
+              decoration: const BoxDecoration(
+                color: surfaceColor,
+                border: Border(top: BorderSide(color: borderColor)),
+              ),
+              child: SafeArea(
+                top: false,
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(24, 12, 24, 12),
+                  child: Center(
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 720),
+                      child: SizedBox(
+                        width: double.infinity,
+                        height: 52,
+                        child: ElevatedButton(
+                          onPressed:
+                              article.url.isEmpty ? null : _openInBrowser,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: primaryColor,
+                            foregroundColor: textOnPrimaryColor,
+                            elevation: 0,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            textStyle: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          child: const Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text('Baca selengkapnya'),
+                              SizedBox(width: 8),
+                              Icon(Icons.open_in_new, size: 18),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
                   ),
                 ),
               ),
@@ -284,4 +283,126 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
       ),
     );
   }
+}
+
+/// Tombol bulat 40 px (putih, border tipis) untuk baris atas.
+class _CircleIconButton extends StatelessWidget {
+  final IconData icon;
+  final Color color;
+  final VoidCallback onTap;
+
+  const _CircleIconButton({
+    required this.icon,
+    required this.color,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: surfaceColor,
+      shape: const CircleBorder(side: BorderSide(color: borderColor)),
+      child: InkWell(
+        customBorder: const CircleBorder(),
+        onTap: onTap,
+        child: SizedBox(
+          width: 40,
+          height: 40,
+          child: Icon(icon, size: 20, color: color),
+        ),
+      ),
+    );
+  }
+}
+
+/// Gambar utama 180 px: gambar artikel jika ada, kalau tidak ilustrasi kategori.
+class _Hero extends StatelessWidget {
+  final Article article;
+  final AppCategory category;
+
+  const _Hero({required this.article, required this.category});
+
+  @override
+  Widget build(BuildContext context) {
+    final illustration = Stack(
+      children: [
+        // Dua lingkaran dekorasi (sebagian keluar dari kotak)
+        Positioned(
+          top: -70,
+          right: -78,
+          child: Container(
+            width: 190,
+            height: 190,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: category.color.withValues(alpha: 0.12),
+            ),
+          ),
+        ),
+        Positioned(
+          bottom: -50,
+          left: -30,
+          child: Container(
+            width: 110,
+            height: 110,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: category.color.withValues(alpha: 0.09),
+            ),
+          ),
+        ),
+        Center(
+          child: Icon(category.icon, size: 72, color: category.color),
+        ),
+      ],
+    );
+
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(20),
+      child: SizedBox(
+        height: 180,
+        width: double.infinity,
+        child: ColoredBox(
+          color: category.lightColor,
+          child: article.imageUrl.isEmpty
+              ? illustration
+              : Image.network(
+                  article.imageUrl,
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, _, _) => illustration,
+                ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Garis tipis dengan satu lonjakan denyut jantung, mengikuti Figma.
+class _PulseDividerPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = primaryColor.withValues(alpha: 0.35)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2
+      ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round;
+
+    // Lonjakan berada sekitar 43% dari sisi kiri
+    final dx = size.width * (146 / 342);
+    final path = Path()
+      ..moveTo(0, 8)
+      ..lineTo(dx, 8)
+      ..lineTo(dx + 6, 8)
+      ..lineTo(dx + 12, 2)
+      ..lineTo(dx + 20, 14)
+      ..lineTo(dx + 26, 5)
+      ..lineTo(dx + 30, 8)
+      ..lineTo(size.width, 8);
+
+    canvas.drawPath(path, paint);
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
