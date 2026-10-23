@@ -15,8 +15,20 @@ class AppCategory {
   });
 }
 
-// Warna utama aplikasi
+// Warna aplikasi (token dari Figma)
 const Color primaryColor = Color(0xFF0B8578);
+const Color primaryDarkColor = Color(0xFF086B61);
+const Color primaryLightColor = Color(0xFFE3F5F2);
+const Color accentColor = Color(0xFFFF7A59);
+const Color accentLightColor = Color(0xFFFFEDE8);
+const Color appBackgroundColor = Color(0xFFF6FAF9);
+const Color surfaceColor = Color(0xFFFFFFFF);
+const Color textPrimaryColor = Color(0xFF1F2933);
+const Color textSecondaryColor = Color(0xFF5F6C76);
+const Color textOnPrimaryColor = Color(0xFFFFFFFF);
+const Color borderColor = Color(0xFFE4EBEA);
+const Color errorColor = Color(0xFFD64545);
+const Color successColor = Color(0xFF2E9E5B);
 
 // Daftar kategori (warna & ikon beda-beda supaya tidak membosankan)
 const List<AppCategory> categories = [

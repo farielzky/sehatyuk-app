@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:provider/provider.dart';
+
 import '../providers/auth_provider.dart';
 import '../utils/constants.dart';
 
@@ -23,6 +25,7 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
+  // Cek format email sederhana: teks, tanda @, teks, titik, lalu teks
   bool _isValidEmail(String email) {
     return RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(email);
   }
@@ -31,7 +34,7 @@ class _LoginScreenState extends State<LoginScreen> {
     final email = _emailController.text.trim();
     final password = _passwordController.text;
 
-    // Login sederhana (tanpa server): email wajib diisi dan berformat benar
+    // Login sederhana (tanpa server): email wajib diisi dan berformat benar,
     // password minimal 6 karakter
     if (email.isEmpty) {
       setState(() => _error = 'Email wajib diisi');
@@ -39,14 +42,15 @@ class _LoginScreenState extends State<LoginScreen> {
     }
 
     if (!_isValidEmail(email)) {
-      setState(() => _error = "Format Email tidak valid");
+      setState(() => _error = 'Format Email tidak valid');
       return;
     }
 
     if (password.length < 6) {
-      setState(() => _error = "Kata sandi minimal 6 karakter");
+      setState(() => _error = 'Kata sandi minimal 6 karakter');
       return;
     }
+
     // Menghapus pesan error jika input sudah benar
     setState(() => _error = '');
 
@@ -55,259 +59,224 @@ class _LoginScreenState extends State<LoginScreen> {
     Navigator.pushReplacementNamed(context, '/home');
   }
 
+  // Border kolom input: radius 12 dengan garis tipis
+  OutlineInputBorder _border(Color color, double width) {
+    return OutlineInputBorder(
+      borderRadius: BorderRadius.circular(12),
+      borderSide: BorderSide(color: color, width: width),
+    );
+  }
+
+  // Satu kolom input lengkap dengan labelnya (komponen Field di Figma)
+  Widget _buildField({
+    required String label,
+    required String hint,
+    required IconData icon,
+    required TextEditingController controller,
+    bool obscure = false,
+    Widget? suffix,
+    TextInputType? keyboardType,
+    TextInputAction? action,
+    ValueChanged<String>? onSubmitted,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: const TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w500,
+            height: 16 / 12,
+            color: textPrimaryColor,
+          ),
+        ),
+        const SizedBox(height: 8),
+        TextField(
+          controller: controller,
+          obscureText: obscure,
+          keyboardType: keyboardType,
+          textInputAction: action,
+          onSubmitted: onSubmitted,
+          style: const TextStyle(fontSize: 14, color: textPrimaryColor),
+          decoration: InputDecoration(
+            hintText: hint,
+            hintStyle: const TextStyle(fontSize: 14, color: textSecondaryColor),
+            filled: true,
+            fillColor: surfaceColor,
+            contentPadding: const EdgeInsets.symmetric(vertical: 15),
+            prefixIcon: Padding(
+              padding: const EdgeInsets.only(left: 16, right: 12),
+              child: Icon(icon, size: 20, color: textSecondaryColor),
+            ),
+            prefixIconConstraints: const BoxConstraints(
+              minWidth: 0,
+              minHeight: 0,
+            ),
+            suffixIcon: suffix,
+            suffixIconConstraints: const BoxConstraints(
+              minWidth: 0,
+              minHeight: 0,
+            ),
+            border: _border(borderColor, 1),
+            enabledBorder: _border(borderColor, 1),
+            focusedBorder: _border(primaryColor, 1.5),
+          ),
+        ),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    final screenWidth = MediaQuery.of(context).size.width;
-    final isWide = screenWidth >= 600;
-    final formMaxWidth = isWide ? 420.0 : double.infinity;
-
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: appBackgroundColor,
       body: SafeArea(
-        child: Center(
-          child: SingleChildScrollView(
-            padding: EdgeInsets.symmetric(
-              horizontal: isWide ? 40 : 28,
-              vertical: 24,
-            ),
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(24, 40, 24, 16),
+          child: Center(
+            // Di layar lebar, form dibatasi 420 px dan berada di tengah
             child: ConstrainedBox(
-              constraints: BoxConstraints(maxWidth: formMaxWidth),
+              constraints: const BoxConstraints(maxWidth: 420),
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  const SizedBox(height: 16),
-
-                  // --- Logo ---
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(18),
-                    child: Image.asset(
-                      'assets/icon.jpg',
-                      width: 80,
-                      height: 80,
-                      fit: BoxFit.cover,
-                    ),
+                  // --- Hero: logo, nama, tagline ---
+                  Column(
+                    children: [
+                      SvgPicture.asset(
+                        'assets/logo.svg',
+                        width: 88,
+                        height: 88,
+                      ),
+                      const SizedBox(height: 12),
+                      const Text(
+                        'SEHATYUK',
+                        style: TextStyle(
+                          fontSize: 28,
+                          fontWeight: FontWeight.w700,
+                          height: 36 / 28,
+                          color: primaryColor,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      const Text(
+                        'Informasi kesehatan terpercaya\ndalam genggamanmu',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 14,
+                          height: 22 / 14,
+                          color: textSecondaryColor,
+                        ),
+                      ),
+                    ],
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 52),
 
-                  // --- App Name ---
+                  // --- Judul form ---
                   const Text(
-                    'SEHATYUK',
+                    'Masuk ke akun',
                     style: TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.w800,
-                      color: primaryColor,
-                      letterSpacing: 2,
+                      fontSize: 22,
+                      fontWeight: FontWeight.w600,
+                      height: 30 / 22,
+                      color: textPrimaryColor,
                     ),
                   ),
-                  const SizedBox(height: 10),
+                  const SizedBox(height: 20),
 
-                  // --- Subtitle ---
-                  Text(
-                    'Informasi kesehatan terpercaya\ndalam genggamanmu',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: Colors.grey.shade600,
-                      height: 1.5,
-                    ),
+                  // --- Email ---
+                  _buildField(
+                    label: 'Email',
+                    hint: 'nama@email.com',
+                    icon: Icons.mail_outline,
+                    controller: _emailController,
+                    keyboardType: TextInputType.emailAddress,
+                    action: TextInputAction.next,
                   ),
-                  const SizedBox(height: 36),
+                  const SizedBox(height: 20),
 
-                  // --- "Masuk ke akun" heading ---
-                  const Align(
-                    alignment: Alignment.centerLeft,
-                    child: Text(
-                      'Masuk ke akun',
-                      style: TextStyle(
-                        fontSize: 22,
-                        fontWeight: FontWeight.w700,
-                        color: Color(0xFF1A1A1A),
+                  // --- Kata sandi ---
+                  _buildField(
+                    label: 'Kata sandi',
+                    hint: '••••••••',
+                    icon: Icons.lock_outline,
+                    controller: _passwordController,
+                    obscure: _obscurePassword,
+                    action: TextInputAction.done,
+                    onSubmitted: (_) => _login(),
+                    suffix: GestureDetector(
+                      onTap: () {
+                        setState(() => _obscurePassword = !_obscurePassword);
+                      },
+                      child: Padding(
+                        padding: const EdgeInsets.only(left: 12, right: 16),
+                        child: Icon(
+                          _obscurePassword
+                              ? Icons.visibility_outlined
+                              : Icons.visibility_off_outlined,
+                          size: 20,
+                          color: textSecondaryColor,
+                        ),
                       ),
                     ),
                   ),
                   const SizedBox(height: 20),
 
-                  // --- Email label ---
-                  const Align(
-                    alignment: Alignment.centerLeft,
-                    child: Text(
-                      'Email',
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                        color: Color(0xFF333333),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-
-                  // --- Email TextField ---
-                  TextField(
-                    controller: _emailController,
-                    keyboardType: TextInputType.emailAddress,
-                    decoration: InputDecoration(
-                      hintText: 'nama@email.com',
-                      hintStyle: TextStyle(
-                        color: Colors.grey.shade400,
-                        fontSize: 14,
-                      ),
-                      prefixIcon: Icon(
-                        Icons.mail_outline_rounded,
-                        color: Colors.grey.shade500,
-                        size: 20,
-                      ),
-                      filled: true,
-                      fillColor: const Color(0xFFF8F8F8),
-                      contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 14,
-                      ),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide(
-                          color: Colors.grey.shade300,
-                          width: 1,
-                        ),
-                      ),
-                      enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide(
-                          color: Colors.grey.shade300,
-                          width: 1,
-                        ),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: const BorderSide(
-                          color: primaryColor,
-                          width: 1.5,
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 18),
-
-                  // --- Password label ---
-                  const Align(
-                    alignment: Alignment.centerLeft,
-                    child: Text(
-                      'Kata sandi',
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                        color: Color(0xFF333333),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-
-                  // --- Password TextField ---
-                  TextField(
-                    controller: _passwordController,
-                    obscureText: _obscurePassword,
-                    decoration: InputDecoration(
-                      hintText: '••••••••',
-                      hintStyle: TextStyle(
-                        color: Colors.grey.shade400,
-                        fontSize: 14,
-                        letterSpacing: 3,
-                      ),
-                      prefixIcon: Icon(
-                        Icons.lock_outline_rounded,
-                        color: Colors.grey.shade500,
-                        size: 20,
-                      ),
-                      suffixIcon: IconButton(
-                        icon: Icon(
-                          _obscurePassword
-                              ? Icons.visibility_outlined
-                              : Icons.visibility_off_outlined,
-                          color: Colors.grey.shade500,
-                          size: 20,
-                        ),
-                        onPressed: () {
-                          setState(() {
-                            _obscurePassword = !_obscurePassword;
-                          });
-                        },
-                      ),
-                      filled: true,
-                      fillColor: const Color(0xFFF8F8F8),
-                      contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 14,
-                      ),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide(
-                          color: Colors.grey.shade300,
-                          width: 1,
-                        ),
-                      ),
-                      enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide(
-                          color: Colors.grey.shade300,
-                          width: 1,
-                        ),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: const BorderSide(
-                          color: primaryColor,
-                          width: 1.5,
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-
-                  // --- "Lupa kata sandi?" link ---
+                  // --- Lupa kata sandi ---
                   Align(
                     alignment: Alignment.centerRight,
                     child: TextButton(
                       onPressed: () {
-                        // TODO: Implement forgot password
+                        // TODO: halaman lupa kata sandi (menunggu kesepakatan tim)
                       },
                       style: TextButton.styleFrom(
                         padding: EdgeInsets.zero,
-                        minimumSize: const Size(0, 0),
+                        minimumSize: Size.zero,
                         tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                       ),
                       child: const Text(
                         'Lupa kata sandi?',
                         style: TextStyle(
-                          fontSize: 13,
-                          color: Color(0xFFBDBDBD),
+                          fontSize: 12,
                           fontWeight: FontWeight.w500,
+                          height: 16 / 12,
+                          color: primaryColor,
                         ),
                       ),
                     ),
                   ),
 
-                  // --- Error message ---
+                  // --- Pesan error (hanya tampil jika ada) ---
                   if (_error.isNotEmpty) ...[
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 20),
                     Container(
-                      width: double.infinity,
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 12, vertical: 10),
+                        horizontal: 12,
+                        vertical: 10,
+                      ),
                       decoration: BoxDecoration(
-                        color: Colors.red.shade50,
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: Colors.red.shade200),
+                        color: errorColor.withValues(alpha: 0.08),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: errorColor.withValues(alpha: 0.3),
+                        ),
                       ),
                       child: Row(
                         children: [
-                          Icon(Icons.error_outline,
-                              size: 18, color: Colors.red.shade400),
+                          const Icon(
+                            Icons.error_outline,
+                            size: 18,
+                            color: errorColor,
+                          ),
                           const SizedBox(width: 8),
                           Expanded(
                             child: Text(
                               _error,
-                              style: TextStyle(
-                                color: Colors.red.shade700,
-                                fontSize: 13,
+                              style: const TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w500,
+                                color: errorColor,
                               ),
                             ),
                           ),
@@ -315,61 +284,59 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                     ),
                   ],
-                  const SizedBox(height: 24),
+                  const SizedBox(height: 20),
 
-                  // --- Masuk Button ---
+                  // --- Tombol Masuk ---
                   SizedBox(
-                    width: double.infinity,
                     height: 52,
                     child: ElevatedButton(
                       onPressed: _login,
                       style: ElevatedButton.styleFrom(
                         backgroundColor: primaryColor,
-                        foregroundColor: Colors.white,
+                        foregroundColor: textOnPrimaryColor,
                         elevation: 0,
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(14),
+                          borderRadius: BorderRadius.circular(12),
                         ),
-                      ),
-                      child: const Text(
-                        'Masuk',
-                        style: TextStyle(
+                        textStyle: const TextStyle(
                           fontSize: 16,
-                          fontWeight: FontWeight.w700,
-                          letterSpacing: 0.5,
+                          fontWeight: FontWeight.w600,
                         ),
                       ),
+                      child: const Text('Masuk'),
                     ),
                   ),
-                  const SizedBox(height: 24),
+                  const SizedBox(height: 20),
 
-                  // --- "Belum punya akun? Daftar" ---
+                  // --- Belum punya akun? Daftar ---
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Text(
-                        'Belum punya akun? ',
+                      const Text(
+                        'Belum punya akun?',
                         style: TextStyle(
                           fontSize: 14,
-                          color: Colors.grey.shade600,
+                          height: 22 / 14,
+                          color: textSecondaryColor,
                         ),
                       ),
+                      const SizedBox(width: 4),
                       GestureDetector(
                         onTap: () {
-                          // TODO: Navigate to register screen
+                          // TODO: halaman daftar (menunggu kesepakatan tim)
                         },
                         child: const Text(
                           'Daftar',
                           style: TextStyle(
-                            fontSize: 14,
-                            color: Color(0xFFBDBDBD),
-                            fontWeight: FontWeight.w700,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                            height: 16 / 12,
+                            color: primaryColor,
                           ),
                         ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 16),
                 ],
               ),
             ),

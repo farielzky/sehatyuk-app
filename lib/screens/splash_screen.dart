@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:provider/provider.dart';
+
 import '../providers/auth_provider.dart';
+import '../utils/constants.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -13,13 +16,13 @@ class _SplashScreenState extends State<SplashScreen>
     with TickerProviderStateMixin {
   late AnimationController _fadeController;
   late Animation<double> _fadeAnimation;
-  late AnimationController _ecgController;
+  late AnimationController _pulseController;
 
   @override
   void initState() {
     super.initState();
 
-    // Logo + text fade-in animation
+    // Logo dan teks muncul perlahan (fade-in)
     _fadeController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 1200),
@@ -29,18 +32,18 @@ class _SplashScreenState extends State<SplashScreen>
       curve: Curves.easeInOut,
     );
 
-    // ECG line draw animation
-    _ecgController = AnimationController(
+    // Garis denyut digambar dari kiri ke kanan
+    _pulseController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 2000),
     );
 
     _fadeController.forward();
     Future.delayed(const Duration(milliseconds: 600), () {
-      if (mounted) _ecgController.forward();
+      if (mounted) _pulseController.forward();
     });
 
-    // Navigate after 3 seconds: ke Home jika sudah login, atau ke Login jika belum
+    // Setelah 3 detik: ke Home jika sudah login, ke Login jika belum
     Future.delayed(const Duration(seconds: 3), () {
       if (!mounted) return;
       final isLoggedIn = context.read<AuthProvider>().isLoggedIn;
@@ -51,7 +54,7 @@ class _SplashScreenState extends State<SplashScreen>
   @override
   void dispose() {
     _fadeController.dispose();
-    _ecgController.dispose();
+    _pulseController.dispose();
     super.dispose();
   }
 
@@ -60,191 +63,143 @@ class _SplashScreenState extends State<SplashScreen>
     final screenSize = MediaQuery.of(context).size;
 
     return Scaffold(
-      body: Container(
-        width: double.infinity,
-        height: double.infinity,
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [
-              Color(0xFF0A9B8C), // lighter teal at top
-              Color(0xFF0B8578), // primary teal
-              Color(0xFF085E55), // darker teal at bottom
-            ],
-            stops: [0.0, 0.4, 1.0],
+      backgroundColor: primaryColor,
+      body: Stack(
+        children: [
+          // Lingkaran dekorasi kanan atas (sebagian keluar layar)
+          Positioned(
+            top: -110,
+            right: -120,
+            child: Container(
+              width: 320,
+              height: 320,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: primaryDarkColor.withValues(alpha: 0.55),
+              ),
+            ),
           ),
-        ),
-        child: Stack(
-          children: [
-            // --- Decorative circle at top-right ---
-            Positioned(
-              top: -screenSize.width * 0.25,
-              right: -screenSize.width * 0.15,
-              child: Container(
-                width: screenSize.width * 0.7,
-                height: screenSize.width * 0.7,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: Colors.white.withValues(alpha: 0.08),
-                ),
-              ),
-            ),
-            // --- Second smaller decorative circle ---
-            Positioned(
-              top: -screenSize.width * 0.1,
-              right: -screenSize.width * 0.05,
-              child: Container(
-                width: screenSize.width * 0.45,
-                height: screenSize.width * 0.45,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: Colors.white.withValues(alpha: 0.06),
-                ),
-              ),
-            ),
 
-            // --- ECG heartbeat line across the middle ---
-            Positioned(
-              left: 0,
-              right: 0,
-              top: screenSize.height * 0.58,
-              child: AnimatedBuilder(
-                animation: _ecgController,
-                builder: (context, _) {
-                  return CustomPaint(
-                    size: Size(screenSize.width, 60),
-                    painter: _SplashECGLinePainter(
-                      progress: _ecgController.value,
-                    ),
-                  );
-                },
+          // Lingkaran dekorasi kiri bawah
+          Positioned(
+            bottom: -56,
+            left: -110,
+            child: Container(
+              width: 260,
+              height: 260,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: primaryDarkColor.withValues(alpha: 0.4),
               ),
             ),
+          ),
 
-            // --- Center content: logo + text ---
-            Center(
-              child: FadeTransition(
-                opacity: _fadeAnimation,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    // SehatYuk logo icon
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(22),
-                      child: Image.asset(
-                        'assets/icon.jpg',
-                        width: 100,
-                        height: 100,
-                        fit: BoxFit.cover,
-                      ),
-                    ),
-                    const SizedBox(height: 20),
-                    // App name
-                    const Text(
-                      'SEHATYUK',
-                      style: TextStyle(
-                        fontSize: 30,
-                        fontWeight: FontWeight.w800,
-                        color: Colors.white,
-                        letterSpacing: 3,
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    // Tagline
-                    Text(
-                      'Hidup sehat, yuk mulai dari sini.',
-                      style: TextStyle(
-                        fontSize: 15,
-                        color: Colors.white.withValues(alpha: 0.85),
-                        fontWeight: FontWeight.w400,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+          // Garis denyut di tengah layar
+          Positioned(
+            left: 0,
+            right: 0,
+            top: screenSize.height * 0.678,
+            child: AnimatedBuilder(
+              animation: _pulseController,
+              builder: (context, _) {
+                return CustomPaint(
+                  size: Size(screenSize.width, 43),
+                  painter: _PulseLinePainter(progress: _pulseController.value),
+                );
+              },
             ),
+          ),
 
-            // --- Version text at bottom ---
-            Positioned(
-              bottom: 40,
-              left: 0,
-              right: 0,
-              child: FadeTransition(
-                opacity: _fadeAnimation,
-                child: Text(
-                  'Versi 1.0',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 13,
-                    color: Colors.white.withValues(alpha: 0.5),
-                    fontWeight: FontWeight.w400,
+          // Logo, nama aplikasi, dan tagline
+          Center(
+            child: FadeTransition(
+              opacity: _fadeAnimation,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  SvgPicture.asset(
+                    'assets/logo_light.svg',
+                    width: 104,
+                    height: 104,
                   ),
+                  const SizedBox(height: 16),
+                  const Text(
+                    'SEHATYUK',
+                    style: TextStyle(
+                      fontSize: 28,
+                      fontWeight: FontWeight.w700,
+                      height: 36 / 28,
+                      color: textOnPrimaryColor,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  const Text(
+                    'Hidup sehat, yuk mulai dari sini.',
+                    style: TextStyle(
+                      fontSize: 14,
+                      height: 22 / 14,
+                      color: textOnPrimaryColor,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+
+          // Versi aplikasi di bagian bawah
+          Positioned(
+            bottom: 36,
+            left: 0,
+            right: 0,
+            child: FadeTransition(
+              opacity: _fadeAnimation,
+              child: Text(
+                'Versi 1.0',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 12,
+                  color: textOnPrimaryColor.withValues(alpha: 0.7),
                 ),
               ),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
 }
 
-/// Animated ECG line that draws across the splash screen horizontally.
-class _SplashECGLinePainter extends CustomPainter {
+/// Garis denyut yang digambar bertahap dari kiri ke kanan.
+/// Bentuknya mengikuti vektor di Figma (tinggi 43).
+class _PulseLinePainter extends CustomPainter {
   final double progress;
-  _SplashECGLinePainter({required this.progress});
+  _PulseLinePainter({required this.progress});
 
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
-      ..color = Colors.white.withValues(alpha: 0.18)
+      ..color = Colors.white.withValues(alpha: 0.3)
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.8
+      ..strokeWidth = 3
       ..strokeCap = StrokeCap.round
       ..strokeJoin = StrokeJoin.round;
 
-    final path = Path();
-    final midY = size.height / 2;
-    final w = size.width;
+    final path = Path()
+      ..moveTo(0, 17.5)
+      ..lineTo(120, 17.5)
+      ..lineTo(130, 17.5)
+      ..lineTo(140, 1.5)
+      ..lineTo(154, 41.5)
+      ..lineTo(166, 11.5)
+      ..lineTo(174, 17.5)
+      ..lineTo(size.width, 17.5);
 
-    // Flat line from left edge
-    path.moveTo(0, midY);
-    path.lineTo(w * 0.25, midY);
-
-    // Small bump
-    path.lineTo(w * 0.30, midY - 5);
-    path.lineTo(w * 0.33, midY + 3);
-    path.lineTo(w * 0.35, midY);
-
-    // Flat to center
-    path.lineTo(w * 0.42, midY);
-
-    // Big spike (main QRS complex)
-    path.lineTo(w * 0.45, midY - 22);
-    path.lineTo(w * 0.48, midY + 15);
-    path.lineTo(w * 0.51, midY - 8);
-    path.lineTo(w * 0.53, midY);
-
-    // Flat
-    path.lineTo(w * 0.60, midY);
-
-    // Small T wave
-    path.lineTo(w * 0.64, midY - 7);
-    path.lineTo(w * 0.68, midY);
-
-    // Flat to right edge
-    path.lineTo(w, midY);
-
-    // Animate the drawing using path metrics
+    // Gambar hanya sebagian garis sesuai progress animasi (0.0 sampai 1.0)
     final metrics = path.computeMetrics().first;
-    final drawLength = metrics.length * progress;
-    final extractedPath = metrics.extractPath(0, drawLength);
-
-    canvas.drawPath(extractedPath, paint);
+    canvas.drawPath(metrics.extractPath(0, metrics.length * progress), paint);
   }
 
   @override
-  bool shouldRepaint(covariant _SplashECGLinePainter oldDelegate) =>
+  bool shouldRepaint(covariant _PulseLinePainter oldDelegate) =>
       oldDelegate.progress != progress;
 }

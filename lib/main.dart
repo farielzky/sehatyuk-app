@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:provider/provider.dart';
+
 import 'providers/auth_provider.dart';
 import 'providers/bookmark_provider.dart';
 import 'screens/bookmark_screen.dart';
@@ -36,10 +37,12 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'SEHATYUK',
+      title: 'SehatYuk',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: primaryColor),
+        scaffoldBackgroundColor: appBackgroundColor,
+        fontFamily: 'Poppins',
         useMaterial3: true,
       ),
       // Splash Screen selalu tampil pertama saat aplikasi dibuka
