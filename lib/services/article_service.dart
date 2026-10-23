@@ -1,7 +1,11 @@
 import 'dart:convert';
+
 import 'package:http/http.dart' as http;
+
 import '../models/article.dart';
+
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+
 /// Mengambil data artikel dari REST API.
 /// Contoh ini memakai format NewsAPI (newsapi.org).
 /// Kalau API yang dipilih beda, ubah baseUrl, parameter, dan Article.fromJson.
@@ -16,8 +20,14 @@ class ArticleService {
     if (apiKey.isEmpty) {
       throw Exception('API key belum diisi di file .env');
     }
+
+    String searchQuery = query.trim();
+    if (searchQuery.isEmpty) {
+      searchQuery = category.isEmpty ? 'health' : category;
+    }
+
     final uri = Uri.parse(
-      '$baseUrl?q=${Uri.encodeComponent(query)}&language=en&pageSize=20&apiKey=$apiKey',
+      '$baseUrl?q=${Uri.encodeComponent('$searchQuery health')}&language=en&pageSize=20&apiKey=$apiKey',
     );
 
     final response = await http.get(uri);
