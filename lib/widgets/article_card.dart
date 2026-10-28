@@ -24,7 +24,7 @@ class ArticleCard extends StatelessWidget {
         : '${article.source} • ${article.date}';
 
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
       child: Material(
         color: surfaceColor,
         borderRadius: BorderRadius.circular(16),

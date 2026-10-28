@@ -96,8 +96,20 @@ const List<AppCategory> categories = [
   ),
 ];
 
+// Kategori untuk chip "Semua" di Home (tidak masuk daftar categories)
+const AppCategory allCategory = AppCategory(
+  name: 'Kesehatan Umum',
+  shortName: 'Kesehatan',
+  query: 'health',
+  icon: Icons.health_and_safety_outlined,
+  color: primaryColor,
+  lightColor: primaryLightColor,
+  darkColor: primaryDarkColor,
+);
+
 /// Cari kategori berdasarkan nama. Kalau tidak ketemu, pakai kategori pertama.
 AppCategory findCategory(String name) {
+  if (name == allCategory.name) return allCategory;
   return categories.firstWhere(
     (c) => c.name == name,
     orElse: () => categories.first,
