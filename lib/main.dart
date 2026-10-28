@@ -1,6 +1,8 @@
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:provider/provider.dart';
+
 import 'providers/auth_provider.dart';
 import 'providers/bookmark_provider.dart';
 import 'screens/bookmark_screen.dart';
@@ -18,6 +20,9 @@ Future<void> main() async {
   final bookmarkProvider = BookmarkProvider();
   await authProvider.load();
   await bookmarkProvider.load();
+
+  // Muat firebase untuk autentikasi dan database
+  Firebase.initializeApp();
 
   runApp(
     MultiProvider(
