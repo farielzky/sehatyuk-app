@@ -1,8 +1,10 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
-import 'package:provider/provider.dart';
+import 'package:sehatyuk/screens/register_screen.dart';
+import 'package:sehatyuk/services/auth_service.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
-import '../providers/auth_provider.dart';
 import '../utils/constants.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -17,6 +19,7 @@ class _LoginScreenState extends State<LoginScreen> {
   final _passwordController = TextEditingController();
   String _error = '';
   bool _obscurePassword = true;
+  bool _isLoading = false;
 
   @override
   void dispose() {
@@ -34,8 +37,7 @@ class _LoginScreenState extends State<LoginScreen> {
     final email = _emailController.text.trim();
     final password = _passwordController.text;
 
-    // Login sederhana (tanpa server): email wajib diisi dan berformat benar,
-    // password minimal 6 karakter
+    // --- Validasi Input ---
     if (email.isEmpty) {
       setState(() => _error = 'Email wajib diisi');
       return;
@@ -51,12 +53,65 @@ class _LoginScreenState extends State<LoginScreen> {
       return;
     }
 
-    // Menghapus pesan error jika input sudah benar
-    setState(() => _error = '');
+    setState(() {
+      _error = '';
+      _isLoading = true;
+    });
 
-    await context.read<AuthProvider>().login(email);
-    if (!mounted) return;
-    Navigator.pushReplacementNamed(context, '/home');
+    try {
+      // 1. Panggil AuthService untuk login via Firebase Authentication
+      final authService = AuthService();
+      await authService.signInWithEmailAndPassword(
+        email: email,
+        password: password,
+      );
+
+      // 2. Simpan status login dan email pengguna di SharedPreferences
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool('isLoggedIn', true);
+      await prefs.setString('userEmail', email);
+
+
+      if (!mounted) return;
+      Navigator.pushReplacementNamed(context, '/home');
+    } on FirebaseAuthException catch (e) {
+      if (mounted) {
+        setState(() {
+          // Penanganan pesan spesifik berdasarkan error code Firebase
+          switch (e.code) {
+            case 'user-not-found':
+            case 'invalid-credential':
+              _error = 'Email tidak terdaftar atau kata sandi salah.';
+              break;
+            case 'wrong-password':
+              _error = 'Kata sandi yang kamu masukkan salah.';
+              break;
+            case 'invalid-email':
+              _error = 'Format email tidak valid.';
+              break;
+            case 'user-disabled':
+              _error = 'Akun ini telah nonaktif. Silakan hubungi dukungan.';
+              break;
+            case 'too-many-requests':
+              _error = 'Terlalu banyak percobaan gagal. Coba lagi nanti.';
+              break;
+            default:
+              _error =
+                  'Gagal masuk. Periksa kembali email dan kata sandi kamu.';
+          }
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _error = e.toString().replaceAll('Exception: ', '');
+        });
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
   }
 
   // Border kolom input: radius 12 dengan garis tipis
@@ -290,7 +345,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   SizedBox(
                     height: 52,
                     child: ElevatedButton(
-                      onPressed: _login,
+                      onPressed: _isLoading ? null : _login,
                       style: ElevatedButton.styleFrom(
                         backgroundColor: primaryColor,
                         foregroundColor: textOnPrimaryColor,
@@ -303,7 +358,18 @@ class _LoginScreenState extends State<LoginScreen> {
                           fontWeight: FontWeight.w600,
                         ),
                       ),
-                      child: const Text('Masuk'),
+                      child: _isLoading
+                          ? const SizedBox(
+                              width: 24,
+                              height: 24,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2.5,
+                                valueColor: AlwaysStoppedAnimation<Color>(
+                                  textOnPrimaryColor,
+                                ),
+                              ),
+                            )
+                          : const Text('Masuk'),
                     ),
                   ),
                   const SizedBox(height: 20),
@@ -323,7 +389,12 @@ class _LoginScreenState extends State<LoginScreen> {
                       const SizedBox(width: 4),
                       GestureDetector(
                         onTap: () {
-                          // TODO: halaman daftar (menunggu kesepakatan tim)
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => const RegisterScreen(),
+                            ),
+                          );
                         },
                         child: const Text(
                           'Daftar',

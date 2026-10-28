@@ -2,15 +2,44 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
 import '../utils/constants.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import '../services/auth_service.dart';
 
 /// Layar Profil sederhana: info akun, tentang aplikasi, dan keluar.
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
 
   Future<void> _logout(BuildContext context) async {
-    await context.read<AuthProvider>().logout();
-    if (!context.mounted) return;
-    Navigator.pushReplacementNamed(context, '/login');
+    try {
+      // 1. Panggil logout dari Firebase Auth Service
+      final authService = AuthService();
+      await authService.signOut();
+
+      // 2. Hapus status login dan data email dari SharedPreferences
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool('isLoggedIn', false);
+
+      if (!context.mounted) return;
+
+      // 3. Reset state AuthProvider lokal
+      await context.read<AuthProvider>().logout();
+
+      if (!context.mounted) return;
+
+      // 4. Arahkan kembali ke halaman Login dan hapus rute sebelumnya
+      Navigator.pushNamedAndRemoveUntil(context, '/login', (route) => false);
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Gagal keluar: ${e.toString().replaceAll('Exception: ', '')}',
+            ),
+            backgroundColor: errorColor,
+          ),
+        );
+      }
+    }
   }
 
   @override
@@ -73,7 +102,7 @@ class ProfileScreen extends StatelessWidget {
                                 ),
                               ),
                               Text(
-                                email,
+                                email.isEmpty ? 'Email tidak tersedia' : email,
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                                 style: const TextStyle(
@@ -115,8 +144,7 @@ class ProfileScreen extends StatelessWidget {
                         context: context,
                         applicationName: 'SEHATYUK',
                         applicationVersion: '1.0',
-                        applicationLegalese:
-                            'Aplikasi informasi kesehatan terpercaya dalam genggamanmu.',
+                        applicationLegalese: 'Aplikasi informasi kesehatan terpercaya dalam genggamanmu.',
                       ),
                     ),
                   ),
