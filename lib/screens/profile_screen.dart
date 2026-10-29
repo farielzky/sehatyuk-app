@@ -18,6 +18,7 @@ class ProfileScreen extends StatelessWidget {
       // 2. Hapus status login dan data email dari SharedPreferences
       final prefs = await SharedPreferences.getInstance();
       await prefs.setBool('isLoggedIn', false);
+      await prefs.remove('userEmail');
 
       if (!context.mounted) return;
 
