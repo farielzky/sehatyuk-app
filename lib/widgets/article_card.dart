@@ -48,17 +48,19 @@ class ArticleCard extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        category.shortName.toUpperCase(),
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w600,
-                          letterSpacing: 0.88,
-                          height: 16 / 11,
-                          color: category.darkColor,
+                      if (category != allCategory) ...[
+                        Text(
+                          category.shortName.toUpperCase(),
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                            letterSpacing: 0.88,
+                            height: 16 / 11,
+                            color: category.darkColor,
+                          ),
                         ),
-                      ),
-                      const SizedBox(height: 4),
+                        const SizedBox(height: 4),
+                      ],
                       Text(
                         article.title,
                         maxLines: 2,

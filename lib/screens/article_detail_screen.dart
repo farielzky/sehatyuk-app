@@ -1,10 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:webview_flutter/webview_flutter.dart';
 import '../models/article.dart';
 import '../providers/bookmark_provider.dart';
 import '../utils/constants.dart';
+import '../widgets/circle_icon_button.dart';
 
+/// Halaman artikel: memuat artikel penuh dari situs penerbit di dalam aplikasi.
+/// Jika gagal dimuat, tampil ringkasan artikel (desain Figma) sebagai cadangan.
 class ArticleDetailScreen extends StatefulWidget {
   final Article article;
 
@@ -15,23 +19,74 @@ class ArticleDetailScreen extends StatefulWidget {
 }
 
 class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
+  WebViewController? _controller;
+  Uri? _uri;
+  double _progress = 0;
+  bool _hasError = false;
+
   @override
   void initState() {
     super.initState();
+
     // Catat sebagai "terakhir dibaca" setelah halaman selesai dibuat
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<BookmarkProvider>().setLastRead(widget.article);
     });
+
+    _setupWebView();
   }
 
-  Future<void> _openInBrowser() async {
+  void _setupWebView() {
+    // Alamat http diubah ke https karena Android memblokir http biasa
+    final raw = widget.article.url.replaceFirst('http://', 'https://');
+    final uri = Uri.tryParse(raw);
+
+    // Link tidak valid: langsung tampilkan ringkasan
+    if (uri == null || !uri.hasScheme || uri.host.isEmpty) {
+      _hasError = true;
+      return;
+    }
+    _uri = uri;
+
+    _controller = WebViewController()
+      ..setJavaScriptMode(JavaScriptMode.unrestricted)
+      ..setNavigationDelegate(
+        NavigationDelegate(
+          onProgress: (value) {
+            if (mounted) setState(() => _progress = value / 100);
+          },
+          onPageStarted: (_) {
+            if (mounted) setState(() => _hasError = false);
+          },
+          onWebResourceError: (error) {
+            // Hanya kegagalan halaman utama yang dianggap error
+            if (error.isForMainFrame ?? true) {
+              if (mounted) setState(() => _hasError = true);
+            }
+          },
+        ),
+      )
+      ..loadRequest(uri);
+  }
+
+  void _retry() {
+    final controller = _controller;
+    final uri = _uri;
+    if (controller == null || uri == null) return;
+
+    setState(() {
+      _hasError = false;
+      _progress = 0;
+    });
+    controller.loadRequest(uri);
+  }
+
+  Future<void> _openExternal() async {
     final uri = Uri.tryParse(widget.article.url);
     if (uri == null) return;
 
-    if (await canLaunchUrl(uri)) {
-      await launchUrl(uri, mode: LaunchMode.externalApplication);
-    } else {
-      if (!mounted) return;
+    final ok = await launchUrl(uri, mode: LaunchMode.externalApplication);
+    if (!ok && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Tidak bisa membuka link artikel')),
       );
@@ -50,175 +105,250 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
     final isBookmarked =
         context.watch<BookmarkProvider>().isBookmarked(article);
 
+    final controller = _controller;
+    final showWeb = !_hasError && controller != null;
+    final host = (_uri?.host ?? '').replaceFirst('www.', '');
+    final isSecure = _uri?.scheme == 'https';
+
+    // Tombol kembali HP: mundur di riwayat situs dulu, baru menutup halaman
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) async {
+        if (didPop) return;
+        if (showWeb && await controller.canGoBack()) {
+          await controller.goBack();
+        } else if (context.mounted) {
+          Navigator.pop(context);
+        }
+      },
+      child: Scaffold(
+        backgroundColor: appBackgroundColor,
+        body: SafeArea(
+          child: Column(
+            children: [
+              // --- Bilah atas: kembali, alamat, buka di browser, bookmark ---
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+                child: Row(
+                  children: [
+                    CircleIconButton(
+                      icon: Icons.arrow_back,
+                      onTap: () => Navigator.pop(context),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Container(
+                        height: 40,
+                        padding: const EdgeInsets.symmetric(horizontal: 14),
+                        decoration: BoxDecoration(
+                          color: surfaceColor,
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(color: borderColor),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              isSecure ? Icons.lock_outline : Icons.public,
+                              size: 14,
+                              color: textSecondaryColor,
+                            ),
+                            const SizedBox(width: 6),
+                            Flexible(
+                              child: Text(
+                                host.isEmpty ? article.source : host,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  color: textSecondaryColor,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    CircleIconButton(
+                      icon: Icons.open_in_new,
+                      onTap: article.url.isEmpty ? null : _openExternal,
+                    ),
+                    const SizedBox(width: 8),
+                    CircleIconButton(
+                      icon: isBookmarked
+                          ? Icons.bookmark
+                          : Icons.bookmark_border,
+                      color: isBookmarked ? primaryColor : textPrimaryColor,
+                      onTap: () => context
+                          .read<BookmarkProvider>()
+                          .toggleBookmark(article),
+                    ),
+                  ],
+                ),
+              ),
+
+              // --- Baris kecil: kategori dan sumber ---
+              Padding(
+                padding: const EdgeInsets.fromLTRB(24, 0, 24, 8),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 24,
+                      height: 24,
+                      decoration: BoxDecoration(
+                        color: category.lightColor,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Icon(category.icon, size: 14, color: category.color),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        category == allCategory ? article.source : '${category.name}  •  ${article.source}',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                          color: category.darkColor,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              // --- Garis kemajuan memuat halaman ---
+              SizedBox(
+                height: 3,
+                child: (showWeb && _progress < 1)
+                    ? LinearProgressIndicator(
+                        value: _progress,
+                        minHeight: 3,
+                        color: primaryColor,
+                        backgroundColor: borderColor,
+                      )
+                    : const ColoredBox(color: borderColor),
+              ),
+
+              // --- Artikel penuh, atau ringkasan jika gagal dimuat ---
+              Expanded(
+                child: showWeb
+                    ? WebViewWidget(controller: controller)
+                    : _buildFallback(article, category),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  // Tampilan cadangan: ringkasan artikel (desain Figma) dan tombol coba lagi
+  Widget _buildFallback(Article article, AppCategory category) {
     final rawContent =
         article.content.isNotEmpty ? article.content : article.description;
     final isTruncated = RegExp(r'\[\+\d+ chars\]').hasMatch(rawContent);
     final body = _cleanContent(rawContent);
 
-    return Scaffold(
-      backgroundColor: appBackgroundColor,
-      body: SafeArea(
-        bottom: false,
-        child: Column(
-          children: [
-            Expanded(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.fromLTRB(24, 8, 24, 16),
-                child: Center(
-                  // Di layar lebar, isi dibatasi 720 px dan berada di tengah
-                  child: ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 720),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
+    return Column(
+      children: [
+        Expanded(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(24, 16, 24, 16),
+            child: Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 720),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    // --- Pemberitahuan ---
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 10,
+                      ),
+                      decoration: BoxDecoration(
+                        color: accentLightColor,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Row(
+                        children: [
+                          Icon(Icons.wifi_off, size: 18, color: accentColor),
+                          SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              'Artikel lengkap tidak bisa dimuat. '
+                              'Ini ringkasannya.',
+                              style: TextStyle(
+                                fontSize: 12,
+                                height: 18 / 12,
+                                color: textPrimaryColor,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+
+                    // --- Gambar utama ---
+                    _Hero(article: article, category: category),
+                    const SizedBox(height: 16),
+
+                    // --- Judul ---
+                    Text(
+                      article.title,
+                      style: const TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.w600,
+                        height: 30 / 22,
+                        color: textPrimaryColor,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+
+                    // --- Sumber dan tanggal ---
+                    Row(
                       children: [
-                        // --- Baris atas: kembali dan bookmark ---
-                        Row(
-                          children: [
-                            _CircleIconButton(
-                              icon: Icons.arrow_back,
-                              color: textPrimaryColor,
-                              onTap: () => Navigator.pop(context),
-                            ),
-                            const Spacer(),
-                            _CircleIconButton(
-                              icon: isBookmarked
-                                  ? Icons.bookmark
-                                  : Icons.bookmark_border,
-                              color: isBookmarked
-                                  ? primaryColor
-                                  : textPrimaryColor,
-                              onTap: () => context
-                                  .read<BookmarkProvider>()
-                                  .toggleBookmark(article),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 16),
-
-                        // --- Gambar utama ---
-                        _Hero(article: article, category: category),
-                        const SizedBox(height: 16),
-
-                        // --- Label kategori ---
-                        Row(
-                          children: [
-                            Container(
-                              width: 24,
-                              height: 24,
-                              decoration: BoxDecoration(
-                                color: category.lightColor,
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: Icon(
-                                category.icon,
-                                size: 14,
-                                color: category.color,
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            Flexible(
-                              child: Text(
-                                category.name.toUpperCase(),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: TextStyle(
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w600,
-                                  letterSpacing: 0.88,
-                                  height: 16 / 11,
-                                  color: category.darkColor,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 16),
-
-                        // --- Judul ---
-                        Text(
-                          article.title,
-                          style: const TextStyle(
-                            fontSize: 22,
-                            fontWeight: FontWeight.w600,
-                            height: 30 / 22,
-                            color: textPrimaryColor,
+                        Container(
+                          width: 28,
+                          height: 28,
+                          decoration: const BoxDecoration(
+                            color: primaryLightColor,
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(
+                            Icons.person_outline,
+                            size: 16,
+                            color: primaryColor,
                           ),
                         ),
-                        const SizedBox(height: 16),
-
-                        // --- Sumber dan tanggal ---
-                        Row(
-                          children: [
-                            Container(
-                              width: 28,
-                              height: 28,
-                              decoration: const BoxDecoration(
-                                color: primaryLightColor,
-                                shape: BoxShape.circle,
-                              ),
-                              child: const Icon(
-                                Icons.person_outline,
-                                size: 16,
-                                color: primaryColor,
-                              ),
+                        const SizedBox(width: 8),
+                        Flexible(
+                          child: Text(
+                            article.source,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              fontSize: 12,
+                              height: 18 / 12,
+                              color: textSecondaryColor,
                             ),
-                            const SizedBox(width: 8),
-                            Flexible(
-                              child: Text(
-                                article.source,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(
-                                  fontSize: 12,
-                                  height: 18 / 12,
-                                  color: textSecondaryColor,
-                                ),
-                              ),
-                            ),
-                            if (article.date.isNotEmpty) ...[
-                              const SizedBox(width: 8),
-                              const Icon(
-                                Icons.schedule,
-                                size: 14,
-                                color: textSecondaryColor,
-                              ),
-                              const SizedBox(width: 8),
-                              Text(
-                                article.date,
-                                style: const TextStyle(
-                                  fontSize: 12,
-                                  height: 18 / 12,
-                                  color: textSecondaryColor,
-                                ),
-                              ),
-                            ],
-                          ],
-                        ),
-                        const SizedBox(height: 16),
-
-                        // --- Garis denyut pemisah ---
-                        SizedBox(
-                          height: 16,
-                          width: double.infinity,
-                          child: CustomPaint(painter: _PulseDividerPainter()),
-                        ),
-                        const SizedBox(height: 16),
-
-                        // --- Isi artikel ---
-                        Text(
-                          body,
-                          style: const TextStyle(
-                            fontSize: 14,
-                            height: 22 / 14,
-                            color: textPrimaryColor,
                           ),
                         ),
-                        if (isTruncated) ...[
-                          const SizedBox(height: 12),
-                          const Text(
-                            'Isi artikel dipotong oleh sumbernya. '
-                            'Tekan "Baca selengkapnya" untuk membaca versi penuh.',
-                            style: TextStyle(
+                        if (article.date.isNotEmpty) ...[
+                          const SizedBox(width: 8),
+                          const Icon(
+                            Icons.schedule,
+                            size: 14,
+                            color: textSecondaryColor,
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            article.date,
+                            style: const TextStyle(
                               fontSize: 12,
                               height: 18 / 12,
                               color: textSecondaryColor,
@@ -227,30 +357,85 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
                         ],
                       ],
                     ),
-                  ),
+                    const SizedBox(height: 16),
+
+                    // --- Garis denyut pemisah ---
+                    SizedBox(
+                      height: 16,
+                      width: double.infinity,
+                      child: CustomPaint(painter: _PulseDividerPainter()),
+                    ),
+                    const SizedBox(height: 16),
+
+                    // --- Ringkasan isi ---
+                    Text(
+                      body,
+                      style: const TextStyle(
+                        fontSize: 14,
+                        height: 22 / 14,
+                        color: textPrimaryColor,
+                      ),
+                    ),
+                    if (isTruncated) ...[
+                      const SizedBox(height: 12),
+                      const Text(
+                        'Isi artikel dipotong oleh sumbernya. '
+                        'Buka di browser untuk membaca versi penuh.',
+                        style: TextStyle(
+                          fontSize: 12,
+                          height: 18 / 12,
+                          color: textSecondaryColor,
+                        ),
+                      ),
+                    ],
+                  ],
                 ),
               ),
             ),
+          ),
+        ),
 
-            // --- Bilah tombol di bawah ---
-            Container(
-              decoration: const BoxDecoration(
-                color: surfaceColor,
-                border: Border(top: BorderSide(color: borderColor)),
-              ),
-              child: SafeArea(
-                top: false,
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(24, 12, 24, 12),
-                  child: Center(
-                    child: ConstrainedBox(
-                      constraints: const BoxConstraints(maxWidth: 720),
+        // --- Bilah tombol: coba lagi dan buka di browser ---
+        Container(
+          decoration: const BoxDecoration(
+            color: surfaceColor,
+            border: Border(top: BorderSide(color: borderColor)),
+          ),
+          child: SafeArea(
+            top: false,
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(24, 12, 24, 12),
+              child: Row(
+                children: [
+                  if (_uri != null)
+                    Expanded(
                       child: SizedBox(
-                        width: double.infinity,
+                        height: 52,
+                        child: OutlinedButton(
+                          onPressed: _retry,
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: primaryColor,
+                            side: const BorderSide(color: primaryColor),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            textStyle: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          child: const Text('Coba lagi'),
+                        ),
+                      ),
+                    ),
+                  if (_uri != null && article.url.isNotEmpty)
+                    const SizedBox(width: 12),
+                  if (article.url.isNotEmpty)
+                    Expanded(
+                      child: SizedBox(
                         height: 52,
                         child: ElevatedButton(
-                          onPressed:
-                              article.url.isEmpty ? null : _openInBrowser,
+                          onPressed: _openExternal,
                           style: ElevatedButton.styleFrom(
                             backgroundColor: primaryColor,
                             foregroundColor: textOnPrimaryColor,
@@ -263,54 +448,16 @@ class _ArticleDetailScreenState extends State<ArticleDetailScreen> {
                               fontWeight: FontWeight.w600,
                             ),
                           ),
-                          child: const Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Text('Baca selengkapnya'),
-                              SizedBox(width: 8),
-                              Icon(Icons.open_in_new, size: 18),
-                            ],
-                          ),
+                          child: const Text('Buka di browser'),
                         ),
                       ),
                     ),
-                  ),
-                ),
+                ],
               ),
             ),
-          ],
+          ),
         ),
-      ),
-    );
-  }
-}
-
-/// Tombol bulat 40 px (putih, border tipis) untuk baris atas.
-class _CircleIconButton extends StatelessWidget {
-  final IconData icon;
-  final Color color;
-  final VoidCallback onTap;
-
-  const _CircleIconButton({
-    required this.icon,
-    required this.color,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: surfaceColor,
-      shape: const CircleBorder(side: BorderSide(color: borderColor)),
-      child: InkWell(
-        customBorder: const CircleBorder(),
-        onTap: onTap,
-        child: SizedBox(
-          width: 40,
-          height: 40,
-          child: Icon(icon, size: 20, color: color),
-        ),
-      ),
+      ],
     );
   }
 }

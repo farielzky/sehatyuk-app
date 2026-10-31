@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:firebase_auth/firebase_auth.dart' show FirebaseAuth;
+import 'package:shared_preferences/shared_preferences.dart';
 import '../providers/auth_provider.dart';
 import '../utils/constants.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import '../services/auth_service.dart';
 
 /// Layar Profil sederhana: info akun, tentang aplikasi, dan keluar.
@@ -45,8 +46,10 @@ class ProfileScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Yang tersimpan sebagai "username" adalah email yang dipakai saat login
-    final email = context.watch<AuthProvider>().username;
+    // Sumber utama email adalah akun Firebase yang sedang login;
+    // AuthProvider hanya cadangan
+    final authEmail = context.watch<AuthProvider>().username;
+    final email = FirebaseAuth.instance.currentUser?.email ?? authEmail;
 
     return Scaffold(
       body: SafeArea(

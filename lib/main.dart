@@ -22,7 +22,11 @@ Future<void> main() async {
   await bookmarkProvider.load();
 
   // Muat firebase untuk autentikasi dan database
-  Firebase.initializeApp();
+    try {
+    await Firebase.initializeApp();
+  } catch (e) {
+    debugPrint('Firebase failed to initialize: $e');
+  }
 
   runApp(
     MultiProvider(
