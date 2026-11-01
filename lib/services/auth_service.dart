@@ -5,61 +5,60 @@ class AuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
-  // Mendapatkan user yang sedang login saat ini
+  // Mendapatkan user yang sedang login
   User? get currentUser => _auth.currentUser;
 
-  // Stream untuk memantau perubahan status autentikasi pengguna
+  // Memantau perubahan autentikasi
   Stream<User?> get authStateChanges => _auth.authStateChanges();
 
-  // Fungsi Registrasi Akun Baru
-  // 1. Mendaftarkan email & password ke Firebase Auth
-  // 2. Menyimpan data email ke Firestore database (koleksi 'users')
-  Future<UserCredential?> signUpWithEmailAndPassword({
+  // Registrasi akun baru
+  Future<UserCredential> signUpWithEmailAndPassword({
     required String email,
     required String password,
   }) async {
     try {
-      // 1. Buat akun di Firebase Authentication
-      UserCredential userCredential = await _auth
-          .createUserWithEmailAndPassword(
-            email: email.trim(),
-            password: password,
-          );
-
-      // 2. Simpan email ke Cloud Firestore
-      if (userCredential.user != null) {
-        await _firestore.collection('users').doc(userCredential.user!.uid).set({
-          'email': email.trim(),
-          'createdAt': FieldValue.serverTimestamp(),
-        });
-      }
-      return userCredential;
-    } on FirebaseAuthException catch (e) {
-      throw _handleAuthException(e);
-    } catch (e) {
-      throw Exception('Terjadi kesalahan yang tidak diketahui: $e');
-    }
-  }
-
-  // Fungsi Login Akun
-  Future<UserCredential?> signInWithEmailAndPassword({
-    required String email,
-    required String password,
-  }) async {
-    try {
-      UserCredential userCredential = await _auth.signInWithEmailAndPassword(
+      final credential = await _auth.createUserWithEmailAndPassword(
         email: email.trim(),
         password: password,
       );
-      return userCredential;
+
+      final user = credential.user;
+
+      if (user != null) {
+        await _firestore.collection('users').doc(user.uid).set({
+          'email': user.email,
+          'createdAt': FieldValue.serverTimestamp(),
+        });
+      }
+
+      return credential;
     } on FirebaseAuthException catch (e) {
-      throw _handleAuthException(e);
+      throw Exception(_handleAuthException(e));
+    } on FirebaseException catch (e) {
+      throw Exception('Gagal menyimpan data pengguna: ${e.message ?? e.code}');
     } catch (e) {
       throw Exception('Terjadi kesalahan yang tidak diketahui: $e');
     }
   }
 
-  // Fungsi Logout
+  // Login akun
+  Future<UserCredential> signInWithEmailAndPassword({
+    required String email,
+    required String password,
+  }) async {
+    try {
+      return await _auth.signInWithEmailAndPassword(
+        email: email.trim(),
+        password: password,
+      );
+    } on FirebaseAuthException catch (e) {
+      throw Exception(_handleAuthException(e));
+    } catch (e) {
+      throw Exception('Terjadi kesalahan yang tidak diketahui: $e');
+    }
+  }
+
+  // Logout akun
   Future<void> signOut() async {
     try {
       await _auth.signOut();
@@ -68,7 +67,7 @@ class AuthService {
     }
   }
 
-  // Helper untuk menangani pesan error berbahasa Indonesia
+  // Mengubah error Firebase menjadi pesan Bahasa Indonesia
   String _handleAuthException(FirebaseAuthException e) {
     switch (e.code) {
       case 'email-already-in-use':
@@ -81,10 +80,14 @@ class AuthService {
         return 'Akun dengan email ini tidak ditemukan.';
       case 'wrong-password':
         return 'Password yang kamu masukkan salah.';
+      case 'invalid-credential':
+        return 'Email tidak terdaftar atau kata sandi salah.';
       case 'user-disabled':
         return 'Akun ini telah dinonaktifkan.';
       case 'too-many-requests':
         return 'Terlalu banyak percobaan gagal. Silakan coba lagi nanti.';
+      case 'network-request-failed':
+        return 'Koneksi internet bermasalah. Periksa koneksi kamu.';
       default:
         return e.message ?? 'Terjadi kesalahan autentikasi.';
     }

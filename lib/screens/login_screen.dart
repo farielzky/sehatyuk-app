@@ -1,9 +1,7 @@
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:sehatyuk/screens/register_screen.dart';
 import 'package:sehatyuk/services/auth_service.dart';
-import 'package:sehatyuk/providers/auth_prefs_provider.dart';
 
 import '../utils/constants.dart';
 
@@ -20,7 +18,6 @@ class _LoginScreenState extends State<LoginScreen> {
   String _error = '';
   bool _obscurePassword = true;
   bool _isLoading = false;
-  final _prefs = AuthPrefsProvider();
 
   @override
   void dispose() {
@@ -38,7 +35,7 @@ class _LoginScreenState extends State<LoginScreen> {
     final email = _emailController.text.trim();
     final password = _passwordController.text;
 
-    // --- Validasi Input ---
+    // Validasi email
     if (email.isEmpty) {
       setState(() => _error = 'Email wajib diisi');
       return;
@@ -49,6 +46,7 @@ class _LoginScreenState extends State<LoginScreen> {
       return;
     }
 
+    // Validasi password
     if (password.length < 6) {
       setState(() => _error = 'Kata sandi minimal 6 karakter');
       return;
@@ -60,43 +58,18 @@ class _LoginScreenState extends State<LoginScreen> {
     });
 
     try {
-      // 1. Panggil AuthService untuk login via Firebase Authentication
       final authService = AuthService();
+
+      // Login langsung menggunakan Firebase Authentication
       await authService.signInWithEmailAndPassword(
         email: email,
         password: password,
       );
 
-      // 2. Simpan status login dan email pengguna di SharedPreferences
-      await _prefs.login(email);
       if (!mounted) return;
+
+      // Firebase sudah menyimpan sesi pengguna
       Navigator.pushReplacementNamed(context, '/home');
-    } on FirebaseAuthException catch (e) {
-      if (mounted) {
-        setState(() {
-          // Penanganan pesan spesifik berdasarkan error code Firebase
-          switch (e.code) {
-            case 'invalid-credential':
-              _error = 'Email tidak terdaftar atau kata sandi salah.';
-              break;
-            case 'wrong-password':
-              _error = 'Kata sandi yang kamu masukkan salah.';
-              break;
-            case 'invalid-email':
-              _error = 'Format email tidak valid.';
-              break;
-            case 'user-disabled':
-              _error = 'Akun ini telah nonaktif. Silakan hubungi dukungan.';
-              break;
-            case 'too-many-requests':
-              _error = 'Terlalu banyak percobaan gagal. Coba lagi nanti.';
-              break;
-            default:
-              _error =
-                  'Gagal masuk. Periksa kembali email dan kata sandi kamu.';
-          }
-        });
-      }
     } catch (e) {
       if (mounted) {
         setState(() {

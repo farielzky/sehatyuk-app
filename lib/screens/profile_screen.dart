@@ -1,7 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
-import 'package:firebase_auth/firebase_auth.dart' show FirebaseAuth;
-import '../providers/auth_prefs_provider.dart';
 import '../utils/constants.dart';
 import '../services/auth_service.dart';
 
@@ -10,38 +7,36 @@ class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
 
   Future<void> _logout(BuildContext context) async {
-    try {
-      // 1. Panggil logout dari Firebase Auth Service
-      final authService = AuthService();
-      await authService.signOut();
+  try {
+    final authService = AuthService();
 
-      // 2. Reset state AuthProvider lokal
-      await context.read<AuthPrefsProvider>().logout();
+    await authService.signOut();
 
-      if (!context.mounted) return;
+    if (!context.mounted) return;
 
-      // 3. Arahkan kembali ke halaman Login dan hapus rute sebelumnya
-      Navigator.pushNamedAndRemoveUntil(context, '/login', (route) => false);
-    } catch (e) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              'Gagal keluar: ${e.toString().replaceAll('Exception: ', '')}',
-            ),
-            backgroundColor: errorColor,
+    Navigator.pushNamedAndRemoveUntil(
+      context,
+      '/login',
+      (route) => false,
+    );
+  } catch (e) {
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Gagal keluar: ${e.toString().replaceAll('Exception: ', '')}',
           ),
-        );
-      }
+          backgroundColor: errorColor,
+        ),
+      );
     }
   }
+}
 
   @override
   Widget build(BuildContext context) {
     // Sumber utama email adalah akun Firebase yang sedang login;
-    // AuthProvider hanya cadangan
-    final authEmail = context.watch<AuthPrefsProvider>().username;
-    final email = FirebaseAuth.instance.currentUser?.email ?? authEmail;
+    final email = AuthService().currentUser?.email ?? '';
 
     return Scaffold(
       body: SafeArea(

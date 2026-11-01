@@ -1,11 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
-import 'package:provider/provider.dart';
-import 'package:sehatyuk/services/prefs_service.dart';
 
-import '../providers/auth_prefs_provider.dart';
 import '../utils/constants.dart';
-
+import '../services/auth_service.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -19,6 +16,7 @@ class _SplashScreenState extends State<SplashScreen>
   late AnimationController _fadeController;
   late Animation<double> _fadeAnimation;
   late AnimationController _pulseController;
+  final AuthService _authService = AuthService();
 
   @override
   void initState() {
@@ -51,22 +49,32 @@ class _SplashScreenState extends State<SplashScreen>
 
   // Mengecek status login dari SharedPreferences dan berpindah layar setelah delay
   Future<void> _checkLoginStatusAndNavigate() async {
-    // Ambil SharedPreferences dan baca status login (default false jika null)
-    final _isLoggedIn = await PrefsService.isLoggedIn();
+    try {
+      // Tunggu event autentikasi awal dari Firebase
+      final authStateFuture = _authService.authStateChanges.first;
 
+      // Pertahankan durasi splash minimal 3 detik
+      await Future.delayed(const Duration(seconds: 3));
 
-    // Tunggu total waktu animasi/splash (3 detik)
-    await Future.delayed(const Duration(seconds: 3));
+      if (!mounted) return;
 
-    if (!mounted) return;
+      // Ambil hasil autentikasi Firebase
+      final user = await authStateFuture;
 
-    // Sinkronkan ke AuthProvider jika diperlukan sebelum navigasi
-    if (_isLoggedIn) {
-      final _username = await PrefsService.getUsername();
-      context.read<AuthPrefsProvider>().login(_username);
+      if (!mounted) return;
+
+      // Navigasi berdasarkan Firebase Authentication
+      Navigator.pushReplacementNamed(
+        context,
+        user != null ? '/home' : '/login',
+      );
+    } catch (e) {
+      debugPrint('Gagal memeriksa status autentikasi: $e');
+
+      if (!mounted) return;
+
+      Navigator.pushReplacementNamed(context, '/login');
     }
-
-    Navigator.pushReplacementNamed(context, _isLoggedIn ? '/home' : '/login');
   }
 
   @override

@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
-import 'package:sehatyuk/providers/auth_prefs_provider.dart';
 
 import '../services/auth_service.dart';
 import '../utils/constants.dart';
@@ -17,7 +16,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
   final _authService = AuthService();
-  final _prefs = AuthPrefsProvider();
 
   String _error = '';
   bool _isLoading = false;
@@ -42,7 +40,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     final password = _passwordController.text;
     final confirmPassword = _confirmPasswordController.text;
 
-    // --- Validasi Input ---
+    // Validasi email
     if (email.isEmpty) {
       setState(() => _error = 'Email wajib diisi');
       return;
@@ -53,6 +51,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       return;
     }
 
+    // Validasi password
     if (password.length < 6) {
       setState(() => _error = 'Kata sandi minimal 6 karakter');
       return;
@@ -69,17 +68,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
     });
 
     try {
-      // 1. Eksekusi registrasi di Firebase & simpan email ke database
       await _authService.signUpWithEmailAndPassword(
         email: email,
         password: password,
       );
 
-      // 2. Simpan status login di SharedPreferences sesuai spesifikasi SehatYuk
-      await _prefs.login(email);
       if (!mounted) return;
 
-      // 3. Tampilkan notifikasi sukses dan navigasi ke Home
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Pendaftaran berhasil! Selamat datang di SehatYuk.'),
