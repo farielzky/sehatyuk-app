@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:firebase_auth/firebase_auth.dart' show FirebaseAuth;
-import 'package:shared_preferences/shared_preferences.dart';
-import '../providers/auth_provider.dart';
+import '../providers/auth_prefs_provider.dart';
 import '../utils/constants.dart';
 import '../services/auth_service.dart';
 
@@ -16,19 +15,12 @@ class ProfileScreen extends StatelessWidget {
       final authService = AuthService();
       await authService.signOut();
 
-      // 2. Hapus status login dan data email dari SharedPreferences
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setBool('isLoggedIn', false);
-      await prefs.remove('userEmail');
+      // 2. Reset state AuthProvider lokal
+      await context.read<AuthPrefsProvider>().logout();
 
       if (!context.mounted) return;
 
-      // 3. Reset state AuthProvider lokal
-      await context.read<AuthProvider>().logout();
-
-      if (!context.mounted) return;
-
-      // 4. Arahkan kembali ke halaman Login dan hapus rute sebelumnya
+      // 3. Arahkan kembali ke halaman Login dan hapus rute sebelumnya
       Navigator.pushNamedAndRemoveUntil(context, '/login', (route) => false);
     } catch (e) {
       if (context.mounted) {
@@ -48,7 +40,7 @@ class ProfileScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     // Sumber utama email adalah akun Firebase yang sedang login;
     // AuthProvider hanya cadangan
-    final authEmail = context.watch<AuthProvider>().username;
+    final authEmail = context.watch<AuthPrefsProvider>().username;
     final email = FirebaseAuth.instance.currentUser?.email ?? authEmail;
 
     return Scaffold(

@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:provider/provider.dart';
+import 'package:sehatyuk/services/prefs_service.dart';
 
-import '../providers/auth_provider.dart';
+import '../providers/auth_prefs_provider.dart';
 import '../utils/constants.dart';
 
-import 'package:shared_preferences/shared_preferences.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -52,8 +52,8 @@ class _SplashScreenState extends State<SplashScreen>
   // Mengecek status login dari SharedPreferences dan berpindah layar setelah delay
   Future<void> _checkLoginStatusAndNavigate() async {
     // Ambil SharedPreferences dan baca status login (default false jika null)
-    final prefs = await SharedPreferences.getInstance();
-    final isLoggedIn = prefs.getBool('isLoggedIn') ?? false;
+    final _isLoggedIn = await PrefsService.isLoggedIn();
+
 
     // Tunggu total waktu animasi/splash (3 detik)
     await Future.delayed(const Duration(seconds: 3));
@@ -61,12 +61,12 @@ class _SplashScreenState extends State<SplashScreen>
     if (!mounted) return;
 
     // Sinkronkan ke AuthProvider jika diperlukan sebelum navigasi
-    if (isLoggedIn) {
-      final email = prefs.getString('userEmail') ?? '';
-      context.read<AuthProvider>().login(email);
+    if (_isLoggedIn) {
+      final _username = await PrefsService.getUsername();
+      context.read<AuthPrefsProvider>().login(_username);
     }
 
-    Navigator.pushReplacementNamed(context, isLoggedIn ? '/home' : '/login');
+    Navigator.pushReplacementNamed(context, _isLoggedIn ? '/home' : '/login');
   }
 
   @override

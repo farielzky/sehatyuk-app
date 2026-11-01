@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:sehatyuk/providers/auth_prefs_provider.dart';
 
 import '../services/auth_service.dart';
 import '../utils/constants.dart';
@@ -17,6 +17,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
   final _authService = AuthService();
+  final _prefs = AuthPrefsProvider();
 
   String _error = '';
   bool _isLoading = false;
@@ -75,9 +76,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       );
 
       // 2. Simpan status login di SharedPreferences sesuai spesifikasi SehatYuk
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setBool('isLoggedIn', true);
-
+      await _prefs.login(email);
       if (!mounted) return;
 
       // 3. Tampilkan notifikasi sukses dan navigasi ke Home

@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:sehatyuk/screens/register_screen.dart';
 import 'package:sehatyuk/services/auth_service.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:sehatyuk/providers/auth_prefs_provider.dart';
 
 import '../utils/constants.dart';
 
@@ -20,6 +20,7 @@ class _LoginScreenState extends State<LoginScreen> {
   String _error = '';
   bool _obscurePassword = true;
   bool _isLoading = false;
+  final _prefs = AuthPrefsProvider();
 
   @override
   void dispose() {
@@ -67,11 +68,7 @@ class _LoginScreenState extends State<LoginScreen> {
       );
 
       // 2. Simpan status login dan email pengguna di SharedPreferences
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setBool('isLoggedIn', true);
-      await prefs.setString('userEmail', email);
-
-
+      await _prefs.login(email);
       if (!mounted) return;
       Navigator.pushReplacementNamed(context, '/home');
     } on FirebaseAuthException catch (e) {
@@ -79,7 +76,6 @@ class _LoginScreenState extends State<LoginScreen> {
         setState(() {
           // Penanganan pesan spesifik berdasarkan error code Firebase
           switch (e.code) {
-            case 'user-not-found':
             case 'invalid-credential':
               _error = 'Email tidak terdaftar atau kata sandi salah.';
               break;

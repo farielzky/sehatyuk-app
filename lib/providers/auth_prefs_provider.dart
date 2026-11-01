@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
+
 import '../services/prefs_service.dart';
 
 /// State management untuk login / logout.
-class AuthProvider extends ChangeNotifier {
+class AuthPrefsProvider extends ChangeNotifier {
   bool _isLoggedIn = false;
   String _username = '';
 
