@@ -265,10 +265,27 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
                 child: SectionHeader(title: listTitle),
               ),
-              for (final article in others)
+              // Tampilkan 20 dulu agar ringan; sisanya lewat tombol
+              for (final article in others.take(20))
                 ArticleCard(
                   article: article,
                   onTap: () => _openDetail(article),
+                ),
+              if (others.length > 20)
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(24, 12, 24, 0),
+                  child: OutlinedButton(
+                    onPressed: () => _openList(listTitle, others),
+                    style: OutlinedButton.styleFrom(
+                      minimumSize: const Size.fromHeight(48),
+                      foregroundColor: primaryColor,
+                      side: const BorderSide(color: borderColor),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    child: Text('Lihat ${others.length - 20} artikel lainnya'),
+                  ),
                 ),
             ],
             const SizedBox(height: 24),
